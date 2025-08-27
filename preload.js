@@ -120,18 +120,7 @@ window.exports = {
     args: {
       enter: (action, callbackSetList) => {
         console.log("通过DIV标签匹配进入", action);
-        if (action && action.payload) {
-          setTimeout(() => {
-            const inputHtml = document.getElementById('inputHtml');
-            if (inputHtml) {
-              inputHtml.value = action.payload;
-              const outputTab = document.querySelector('[data-tab="output"]');
-              if (outputTab) {
-                outputTab.click();
-              }
-            }
-          }, 100);
-        }
+        // 这里不需要处理，因为onPluginEnter会统一处理
       },
     },
   },
@@ -140,18 +129,7 @@ window.exports = {
     args: {
       enter: (action, callbackSetList) => {
         console.log("通过BUTTON标签匹配进入", action);
-        if (action && action.payload) {
-          setTimeout(() => {
-            const inputHtml = document.getElementById('inputHtml');
-            if (inputHtml) {
-              inputHtml.value = action.payload;
-              const outputTab = document.querySelector('[data-tab="output"]');
-              if (outputTab) {
-                outputTab.click();
-              }
-            }
-          }, 100);
-        }
+        // 这里不需要处理，因为onPluginEnter会统一处理
       },
     },
   },
@@ -161,23 +139,94 @@ window.exports = {
 utools.onPluginEnter(({ code, type, payload }) => {
   console.log("插件进入:", { code, type, payload });
   
-  // 如果是从剪贴板或文本匹配进入，自动填充内容
-  if (payload) {
-    setTimeout(() => {
-      const inputHtml = document.getElementById('inputHtml');
-      if (inputHtml) {
+  setTimeout(() => {
+    const inputHtml = document.getElementById('inputHtml');
+    const outputHtml = document.getElementById('outputHtml');
+    
+    if (inputHtml && outputHtml) {
+      // 清空输出区域
+      outputHtml.textContent = '';
+      
+      // 根据进入方式决定是否填充内容
+      if (shouldAutoFillContent(code, type, payload)) {
+        console.log("自动填充HTML内容:", payload);
         inputHtml.value = payload;
         // 自动切换到输出标签页进行格式化
         const outputTab = document.querySelector('[data-tab="output"]');
         if (outputTab) {
           outputTab.click();
         }
+      } else {
+        console.log("清空输入框，准备手动输入");
+        inputHtml.value = '';
+        // 确保在输入标签页
+        const inputTab = document.querySelector('[data-tab="input"]');
+        if (inputTab) {
+          inputTab.click();
+        }
       }
-    }, 100);
-  }
+    }
+  }, 100);
 });
+
+// 判断是否应该自动填充内容
+function shouldAutoFillContent(code, type, payload) {
+  // 如果没有payload，不填充
+  if (!payload || payload.trim() === '') {
+    return false;
+  }
+  
+  // 如果payload就是搜索关键词本身，不填充
+  const searchKeywords = [
+    'html', 'htmltest', 'html美化', 'html格式化', 
+    '代码格式化', '代码美化', 'format html', '美化代码',
+    '格式化html', 'html代码美化', '动态测试', '测试html'
+  ];
+  
+  if (searchKeywords.includes(payload.toLowerCase().trim())) {
+    return false;
+  }
+  
+  // 如果payload很短且不包含HTML标签，可能是搜索词，不填充
+  if (payload.length < 10 && !payload.includes('<') && !payload.includes('>')) {
+    return false;
+  }
+  
+  // 如果包含HTML标签或者是长文本，则填充
+  if (payload.includes('<') && payload.includes('>')) {
+    return true;
+  }
+  
+  // 如果是从特定的HTML匹配器进入，说明是HTML内容
+  if (code && code.includes('html') && code.includes('matcher')) {
+    return true;
+  }
+  
+  // 默认不填充，让用户手动输入
+  return false;
+}
 
 // 监听插件退出事件
 utools.onPluginOut(() => {
   console.log("插件退出");
+});
+
+// 添加快捷键支持清空
+document.addEventListener('keydown', (e) => {
+  // Ctrl+L 或 Cmd+L 清空输入
+  if ((e.ctrlKey || e.metaKey) && e.key === 'l') {
+    e.preventDefault();
+    const inputHtml = document.getElementById('inputHtml');
+    const outputHtml = document.getElementById('outputHtml');
+    if (inputHtml && outputHtml) {
+      inputHtml.value = '';
+      outputHtml.textContent = '';
+      // 切换到输入标签页
+      const inputTab = document.querySelector('[data-tab="input"]');
+      if (inputTab) {
+        inputTab.click();
+      }
+      console.log("快捷键清空完成");
+    }
+  }
 });

@@ -18,15 +18,7 @@
         "format html",
         "美化代码",
         "格式化html",
-        "html代码美化",
-        "<div",
-        "<html",
-        "<body",
-        "<head",
-        "<span",
-        "<script",
-        "<style",
-        "<!DOCTYPE"
+        "html代码美化"
       ]
     }
   ],
