@@ -1,0 +1,38 @@
+{
+  "name": "HTML代码格式化工具",
+  "version": "1.0.0",
+  "description": "专业的HTML代码格式化和美化工具，支持语法高亮，一键格式化，完美集成uTools工作流",
+  "author": "uTools Plugin Developer",
+  "main": "format-tool.html",
+  "logo": "logo.png",
+  "preload": "preload.js",
+  "features": [
+    {
+      "code": "html-formatter",
+      "explain": "HTML 代码格式化工具 - 智能格式化，语法高亮，一键美化",
+      "cmds": [
+        "html格式化",
+        "html美化", 
+        "代码格式化",
+        "代码美化",
+        "format html",
+        "美化代码",
+        "格式化html",
+        "html代码美化",
+        "<div",
+        "<html",
+        "<body",
+        "<head",
+        "<span",
+        "<script",
+        "<style",
+        "<!DOCTYPE"
+      ]
+    }
+  ],
+  "pluginSetting": {
+    "single": true,
+    "height": 650,
+    "width": 900
+  }
+}

@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTML 代码格式化工具</title>
+    <style>
+        :root {
+            --primary-color: #007bff;
+            --secondary-color: #6c757d;
+            --bg-color: #f8f9fa;
+            --text-color: #212529;
+            --border-color: #dee2e6;
+            --button-hover-bg: #0056b3;
+            --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+        body {
+            font-family: var(--font-family);
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            box-sizing: border-box;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+        h1 {
+            margin: 0;
+            color: var(--primary-color);
+        }
+        p {
+            color: var(--secondary-color);
+        }
+        .container {
+            display: flex;
+            flex-grow: 1;
+            flex-direction: column;
+        }
+        .tab-container {
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+        }
+        .tab-header {
+            display: flex;
+            background-color: #fff;
+            border-radius: 8px 8px 0 0;
+            border: 1px solid var(--border-color);
+            border-bottom: none;
+            overflow: hidden;
+        }
+        .tab-btn {
+            flex: 1;
+            padding: 1rem;
+            border: none;
+            background-color: #f8f9fa;
+            color: var(--secondary-color);
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            border-right: 1px solid var(--border-color);
+        }
+        .tab-btn:last-child {
+            border-right: none;
+        }
+        .tab-btn.active {
+            background-color: #fff;
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+        .tab-btn:hover:not(.active) {
+            background-color: #e9ecef;
+        }
+        .tab-content {
+            flex-grow: 1;
+            border: 1px solid var(--border-color);
+            border-radius: 0 0 8px 8px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .tab-panel {
+            display: none;
+            flex-grow: 1;
+            flex-direction: column;
+        }
+        .tab-panel.active {
+            display: flex;
+        }
+        textarea {
+            width: 100%;
+            flex-grow: 1;
+            border: none;
+            border-radius: 0;
+            padding: 1rem;
+            font-family: "Courier New", Courier, monospace;
+            font-size: 14px;
+            resize: none;
+            box-sizing: border-box;
+            background-color: #fff;
+            outline: none;
+        }
+
+        
+        /* HTML 语法高亮样式 */
+        .code-highlight {
+            width: 100%;
+            flex-grow: 1;
+            border: none;
+            border-radius: 0;
+            padding: 1rem;
+            font-family: "Consolas", "Monaco", "Courier New", monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+            overflow: auto;
+            box-sizing: border-box;
+            min-height: 200px;
+            max-width: 100%;
+            display: block;
+            position: relative;
+        }
+        
+        /* 确保代码行正确显示 */
+        .code-highlight .code-line {
+            white-space: pre;
+            min-height: 1.5em;
+            margin: 0;
+            padding: 0;
+            overflow: visible;
+        }
+        
+        /* 当输出区域为空时显示占位符文本 */
+        .code-highlight:empty::before {
+            content: "格式化后的代码将显示在这里...";
+            color: #666;
+            font-style: italic;
+        }
+        
+        /* 确保高亮样式正确显示 */
+        .code-highlight .html-tag {
+            color: #569cd6 !important;
+        }
+        
+        .code-highlight .html-attr {
+            color: #9cdcfe !important;
+        }
+        
+        .code-highlight .html-value {
+            color: #ce9178 !important;
+        }
+        
+        .code-highlight .html-comment {
+            color: #6a9955 !important;
+        }
+        
+        .code-highlight .html-special {
+            color: #d7ba7d !important;
+        }
+        
+        /* HTML 标签颜色 */
+        .html-tag {
+            color: #569cd6;
+        }
+        
+        /* HTML 属性名颜色 */
+        .html-attr {
+            color: #9cdcfe;
+        }
+        
+        /* HTML 属性值颜色 */
+        .html-value {
+            color: #ce9178;
+        }
+        
+        /* HTML 注释颜色 */
+        .html-comment {
+            color: #6a9955;
+        }
+        
+        /* HTML 文本内容颜色 */
+        .html-text {
+            color: #d4d4d4;
+        }
+        
+        /* 自闭合标签颜色 */
+        .html-self-closing {
+            color: #569cd6;
+        }
+        
+        /* 特殊字符颜色 */
+        .html-special {
+            color: #d7ba7d;
+        }
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+        }
+        button {
+            padding: 0.75rem 1.5rem;
+            font-size: 16px;
+            font-weight: bold;
+            color: #fff;
+            background-color: var(--primary-color);
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out, transform 0.1s ease;
+        }
+        button:hover {
+            background-color: var(--button-hover-bg);
+        }
+        button:active {
+            transform: scale(0.98);
+        }
+        button.secondary {
+            background-color: var(--secondary-color);
+        }
+        button.secondary:hover {
+            background-color: #5a6268;
+        }
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0,0,0,0.7);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.5s, visibility 0.5s;
+        }
+        .toast.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        .uTools-info {
+            background-color: #e3f2fd;
+            border: 1px solid #2196f3;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+        .uTools-info h3 {
+            margin: 0 0 0.5rem 0;
+            color: #1976d2;
+        }
+        .uTools-info p {
+            margin: 0;
+            color: #1976d2;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>HTML 代码格式化工具</h1>
+        <p>粘贴您的 HTML 代码，一键美化，使其更具可读性。</p>
+    </header>
+    <div class="controls">
+        <button id="formatBtn">格式化 ✨</button>
+        <button id="copyBtn" class="secondary">复制结果 📋</button>
+        <button id="clearBtn" class="secondary">全部清空 🗑️</button>
+        <!-- <button id="pasteBtn" class="secondary">从剪贴板粘贴 📋</button> -->
+    </div>
+    <div class="container">
+        <div class="tab-container">
+            <div class="tab-header">
+                <button class="tab-btn active" data-tab="input">输入原始 HTML</button>
+                <button class="tab-btn" data-tab="output">格式化后的 HTML</button>
+            </div>
+            <div class="tab-content">
+                <div id="inputTab" class="tab-panel active">
+                    <textarea id="inputHtml" placeholder="在此处粘贴未格式化的 HTML 代码..."></textarea>
+                </div>
+                <div id="outputTab" class="tab-panel">
+                    <div id="outputHtml" class="code-highlight"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+
+    <div id="toast" class="toast">已复制到剪贴板！</div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const inputHtml = document.getElementById('inputHtml');
+            const outputHtml = document.getElementById('outputHtml');
+            const formatBtn = document.getElementById('formatBtn');
+            const copyBtn = document.getElementById('copyBtn');
+            const clearBtn = document.getElementById('clearBtn');
+            const pasteBtn = document.getElementById('pasteBtn');
+            const toast = document.getElementById('toast');
+            const tabBtns = document.querySelectorAll('.tab-btn');
+            const tabPanels = document.querySelectorAll('.tab-panel');
+
+            // 检查是否在 uTools 环境中
+            const isUTools = typeof window.utools !== 'undefined';
+
+            // 标签页切换功能
+            tabBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const targetTab = btn.getAttribute('data-tab');
+                    switchTab(targetTab);
+                });
+            });
+
+            function switchTab(tabName) {
+                // 更新标签按钮状态
+                tabBtns.forEach(btn => {
+                    btn.classList.remove('active');
+                    if (btn.getAttribute('data-tab') === tabName) {
+                        btn.classList.add('active');
+                    }
+                });
+
+                // 更新标签面板显示
+                tabPanels.forEach(panel => {
+                    panel.classList.remove('active');
+                });
+                
+                if (tabName === 'input') {
+                    document.getElementById('inputTab').classList.add('active');
+                } else if (tabName === 'output') {
+                    document.getElementById('outputTab').classList.add('active');
+                    // 切换到输出标签时自动格式化
+                    autoFormatWhenSwitchToOutput();
+                }
+            }
+
+            function autoFormatWhenSwitchToOutput() {
+                const rawHtml = inputHtml.value;
+                if (rawHtml.trim() === '') {
+                    outputHtml.textContent = '';
+                    // 显示提示信息
+                    const emptyDiv = document.createElement('div');
+                    emptyDiv.style.cssText = 'color: #666; font-style: italic; text-align: center; padding: 2rem;';
+                    emptyDiv.textContent = '请先在"输入原始 HTML"标签页中输入要格式化的代码';
+                    outputHtml.appendChild(emptyDiv);
+                    return;
+                }
+                
+                try {
+                    const formattedHtml = formatHtml(rawHtml);
+                    console.log('自动格式化HTML:', formattedHtml);
+                    
+                    // 使用 textContent 而不是 innerHTML 来避免页面变形
+                    outputHtml.textContent = formattedHtml;
+                    // 然后应用语法高亮
+                    applyCodeHighlight(outputHtml);
+                    showToast('自动格式化完成！', 'success');
+                } catch (error) {
+                    console.error('自动格式化错误:', error);
+                    outputHtml.textContent = '格式化失败: ' + error.message;
+                    showToast('格式化失败: ' + error.message, 'error');
+                }
+            }
+
+            formatBtn.addEventListener('click', () => {
+                // 直接切换到输出标签页，会自动触发格式化
+                switchTab('output');
+            });
+
+            copyBtn.addEventListener('click', () => {
+                const plainText = outputHtml.textContent || outputHtml.innerText || '';
+                if (plainText.trim()) {
+                    if (isUTools) {
+                        // 使用 uTools 的复制功能
+                        window.utools.copyText(plainText);
+                        showToast('已复制到剪贴板！');
+                    } else {
+                        // 使用原生剪贴板 API
+                        navigator.clipboard.writeText(plainText).then(() => {
+                            showToast('已复制到剪贴板！');
+                        }).catch(err => {
+                            showToast('复制失败: ' + err);
+                        });
+                    }
+                } else {
+                     showToast('没有内容可复制');
+                }
+            });
+
+            clearBtn.addEventListener('click', () => {
+                inputHtml.value = '';
+                outputHtml.textContent = '';
+                // 切换回输入标签页
+                switchTab('input');
+                showToast('已清空所有内容');
+            });
+
+            pasteBtn.addEventListener('click', () => {
+                if (isUTools) {
+                    // 使用 uTools 的粘贴功能
+                    const clipboardText = window.utools.readText();
+                    if (clipboardText) {
+                        inputHtml.value = clipboardText;
+                        // 切换到输入标签页以显示粘贴的内容
+                        switchTab('input');
+                        showToast('已从剪贴板粘贴内容');
+                    } else {
+                        showToast('剪贴板为空');
+                    }
+                } else {
+                    // 使用原生剪贴板 API
+                    navigator.clipboard.readText().then(text => {
+                        inputHtml.value = text;
+                        // 切换到输入标签页以显示粘贴的内容
+                        switchTab('input');
+                        showToast('已从剪贴板粘贴内容');
+                    }).catch(err => {
+                        showToast('读取剪贴板失败: ' + err);
+                    });
+                    }
+                });
+
+            function showToast(message, type = 'info') {
+                toast.textContent = message;
+                toast.classList.add('show');
+                
+                // 根据类型设置不同的样式
+                toast.className = 'toast show';
+                if (type === 'success') {
+                    toast.style.backgroundColor = 'rgba(40, 167, 69, 0.9)';
+                } else if (type === 'error') {
+                    toast.style.backgroundColor = 'rgba(220, 53, 69, 0.9)';
+                } else {
+                    toast.style.backgroundColor = 'rgba(0,0,0,0.7)';
+                }
+                
+                setTimeout(() => {
+                    toast.classList.remove('show');
+                }, 3000);
+            }
+
+            function formatHtml(html) {
+                const indent = '    '; // 4个空格缩进
+                let formatted = '';
+                let indentLevel = 0;
+                
+                // 移除标签间的空白字符并用统一换行符
+                html = html.replace(/>\s*</g, '><').trim();
+                
+                // 将 HTML 按标签分割
+                const tokens = html.split(/(<[^>]+>)/).filter(Boolean);
+                
+                let inPre = false; // 用于跟踪是否在 <pre> 标签内
+
+                tokens.forEach(token => {
+                    const isTag = token.startsWith('<') && token.endsWith('>');
+
+                    if (isTag) {
+                        const tagContent = token.substring(1, token.length - 1).trim();
+                        
+                        // 检查是否是 <pre> 标签
+                        if (tagContent.toLowerCase().startsWith('pre')) {
+                            inPre = true;
+                        } else if (tagContent.toLowerCase().startsWith('/pre')) {
+                            inPre = false;
+                        }
+                        
+                        // 处理结束标签
+                        if (token.startsWith('</')) {
+                            indentLevel = Math.max(0, indentLevel - 1);
+                            if (!inPre) {
+                                formatted += '\n' + indent.repeat(indentLevel) + token;
+                            } else {
+                                formatted += token;
+                            }
+                        // 处理自闭合标签和特殊标签
+                        } else if (tagContent.endsWith('/') || ['br', 'hr', 'img', 'input', 'meta', 'link'].includes(tagContent.split(' ')[0])) {
+                            if (!inPre) {
+                                formatted += '\n' + indent.repeat(indentLevel) + token;
+                            } else {
+                                formatted += token;
+                            }
+                        // 处理开始标签
+                        } else {
+                           if (!inPre) {
+                                formatted += '\n' + indent.repeat(indentLevel) + token;
+                                indentLevel++;
+                            } else {
+                                formatted += token;
+                            }
+                        }
+                    } else { // 处理文本内容
+                        const textContent = token.trim();
+                        if (textContent) {
+                           if (!inPre) {
+                                formatted += '\n' + indent.repeat(indentLevel) + textContent;
+                            } else {
+                                formatted += token; // 在<pre>标签内保留原始文本
+                            }
+                        }
+                    }
+                });
+
+                return formatted.trim();
+            }
+
+            // 安全地应用代码高亮
+            function applyCodeHighlight(element) {
+                const text = element.textContent;
+                const lines = text.split('\n');
+                
+                // 清空元素内容
+                element.innerHTML = '';
+                
+                // 逐行处理并添加高亮
+                lines.forEach((line, index) => {
+                    const lineDiv = document.createElement('div');
+                    lineDiv.className = 'code-line';
+                    
+                    if (line === '') {
+                        // 完全空行，保持空格以维持行高
+                        lineDiv.innerHTML = '&nbsp;';
+                    } else {
+                        // 应用语法高亮，保留原始空格
+                        const highlightedLine = highlightHtmlLine(line);
+                        lineDiv.innerHTML = highlightedLine;
+                    }
+                    
+                    element.appendChild(lineDiv);
+                });
+            }
+            
+            // 对单行HTML进行语法高亮
+            function highlightHtmlLine(line) {
+                // 先保存前导空格
+                const leadingSpaces = line.match(/^(\s*)/)[1];
+                
+                // 转义 HTML 特殊字符
+                let escaped = line
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#39;');
+
+                // 高亮注释（优先处理，避免被其他规则影响）
+                escaped = escaped.replace(
+                    /(&lt;!--)([^&]*?)(--&gt;)/g,
+                    '<span class="html-comment">$1$2$3</span>'
+                );
+                
+                // 高亮完整的HTML标签（包括属性）
+                escaped = escaped.replace(
+                    /(&lt;\/?)([a-zA-Z][a-zA-Z0-9]*)((?:\s+[^&>]*?)?)(\/?)(&gt;)/g,
+                    function(match, openBracket, tagName, attributes, selfClosing, closeBracket) {
+                        let result = '<span class="html-tag">' + openBracket + tagName + '</span>';
+                        
+                        // 处理属性
+                        if (attributes) {
+                            // 高亮属性名和值
+                            attributes = attributes.replace(
+                                /(\s+)([a-zA-Z][a-zA-Z0-9\-_]*)(\s*=\s*)(["'])([^"']*)\4/g,
+                                '$1<span class="html-attr">$2</span>$3$4<span class="html-value">$5</span>$4'
+                            );
+                            
+                            // 高亮没有值的属性
+                            attributes = attributes.replace(
+                                /(\s+)([a-zA-Z][a-zA-Z0-9\-_]*)(?=\s|$)/g,
+                                '$1<span class="html-attr">$2</span>'
+                            );
+                            
+                            result += attributes;
+                        }
+                        
+                        if (selfClosing) {
+                            result += '<span class="html-tag">' + selfClosing + '</span>';
+                        }
+                        result += '<span class="html-tag">' + closeBracket + '</span>';
+                        return result;
+                    }
+                );
+
+                return escaped;
+            }
+
+            // 如果是从剪贴板进入，自动填充内容
+            if (isUTools && window.utools.getFeatures()[0]?.code === 'html-formatter') {
+                // 延迟执行，确保 DOM 已加载
+                setTimeout(() => {
+                    const clipboardText = window.utools.readText();
+                    if (clipboardText && clipboardText.trim()) {
+                        inputHtml.value = clipboardText;
+                        // 自动切换到输出标签页进行格式化
+                        switchTab('output');
+                    }
+                }, 100);
+            }
+        });
+    </script>
+</body>
+</html>
