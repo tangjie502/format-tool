@@ -169,6 +169,32 @@ utools.onPluginEnter(({ code, type, payload }) => {
   }, 100);
 });
 
+// 检测是否为HTML内容（与format-tool.html中的函数保持一致）
+function isHtmlContent(text) {
+  if (!text || text.trim() === '') {
+    return false;
+  }
+  
+  // 检查是否包含HTML标签
+  const htmlTagPattern = /<[a-zA-Z][^>]*>/;
+  if (htmlTagPattern.test(text)) {
+    return true;
+  }
+  
+  // 检查是否包含HTML实体
+  const htmlEntityPattern = /&[a-zA-Z]+;/;
+  if (htmlEntityPattern.test(text)) {
+    return true;
+  }
+  
+  // 检查是否包含DOCTYPE声明
+  if (text.trim().toLowerCase().startsWith('<!doctype')) {
+    return true;
+  }
+  
+  return false;
+}
+
 // 判断是否应该自动填充内容
 function shouldAutoFillContent(code, type, payload) {
   // 如果没有payload，不填充
@@ -187,13 +213,9 @@ function shouldAutoFillContent(code, type, payload) {
     return false;
   }
   
-  // 如果payload很短且不包含HTML标签，可能是搜索词，不填充
-  if (payload.length < 10 && !payload.includes('<') && !payload.includes('>')) {
-    return false;
-  }
-  
-  // 如果包含HTML标签或者是长文本，则填充
-  if (payload.includes('<') && payload.includes('>')) {
+  // 使用更准确的HTML检测
+  if (isHtmlContent(payload)) {
+    console.log("检测到HTML内容，准备自动填充");
     return true;
   }
   

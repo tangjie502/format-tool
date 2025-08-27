@@ -343,10 +343,14 @@
                 }
             }
 
+            // 存储格式化后的原始HTML字符串
+            let lastFormattedHtml = '';
+
             function autoFormatWhenSwitchToOutput() {
                 const rawHtml = inputHtml.value;
                 if (rawHtml.trim() === '') {
                     outputHtml.textContent = '';
+                    lastFormattedHtml = '';
                     // 显示提示信息
                     const emptyDiv = document.createElement('div');
                     emptyDiv.style.cssText = 'color: #666; font-style: italic; text-align: center; padding: 2rem;';
@@ -359,6 +363,9 @@
                     const formattedHtml = formatHtml(rawHtml);
                     console.log('自动格式化HTML:', formattedHtml);
                     
+                    // 保存格式化后的HTML字符串用于复制
+                    lastFormattedHtml = formattedHtml;
+                    
                     // 使用 textContent 而不是 innerHTML 来避免页面变形
                     outputHtml.textContent = formattedHtml;
                     // 然后应用语法高亮
@@ -366,6 +373,7 @@
                     showToast('自动格式化完成！', 'success');
                 } catch (error) {
                     console.error('自动格式化错误:', error);
+                    lastFormattedHtml = '';
                     outputHtml.textContent = '格式化失败: ' + error.message;
                     showToast('格式化失败: ' + error.message, 'error');
                 }
@@ -377,20 +385,30 @@
             });
 
             copyBtn.addEventListener('click', () => {
-                const plainText = outputHtml.textContent || outputHtml.innerText || '';
-                if (plainText.trim()) {
+                // 优先使用保存的格式化HTML，如果没有则从DOM获取
+                const textToCopy = lastFormattedHtml || outputHtml.textContent || outputHtml.innerText || '';
+                
+                if (textToCopy.trim()) {
                     if (isUTools) {
                         // 使用 uTools 的复制功能
-                        window.utools.copyText(plainText);
-                        showToast('已复制到剪贴板！');
+                        window.utools.copyText(textToCopy);
+                        showToast('已复制格式化后的HTML到剪贴板！');
                     } else {
                         // 使用原生剪贴板 API
-                        navigator.clipboard.writeText(plainText).then(() => {
-                            showToast('已复制到剪贴板！');
+                        navigator.clipboard.writeText(textToCopy).then(() => {
+                            showToast('已复制格式化后的HTML到剪贴板！');
                         }).catch(err => {
                             showToast('复制失败: ' + err);
                         });
                     }
+                    
+                    // 显示复制统计信息
+                    console.log('复制内容信息:', {
+                        source: lastFormattedHtml ? '格式化结果' : 'DOM文本',
+                        length: textToCopy.length,
+                        lines: textToCopy.split('\n').length,
+                        preview: textToCopy.substring(0, 100) + '...'
+                    });
                 } else {
                      showToast('没有内容可复制');
                 }
@@ -399,6 +417,7 @@
             clearBtn.addEventListener('click', () => {
                 inputHtml.value = '';
                 outputHtml.textContent = '';
+                lastFormattedHtml = '';  // 清空保存的格式化HTML
                 // 切换回输入标签页
                 switchTab('input');
                 showToast('已清空所有内容');
@@ -410,9 +429,14 @@
                     const clipboardText = window.utools.readText();
                     if (clipboardText) {
                         inputHtml.value = clipboardText;
-                        // 切换到输入标签页以显示粘贴的内容
-                        switchTab('input');
-                        showToast('已从剪贴板粘贴内容');
+                        // 检查是否为HTML代码，如果是则自动格式化
+                        if (isHtmlContent(clipboardText)) {
+                            switchTab('output');
+                            showToast('检测到HTML代码，已自动格式化');
+                        } else {
+                            switchTab('input');
+                            showToast('已从剪贴板粘贴内容');
+                        }
                     } else {
                         showToast('剪贴板为空');
                     }
@@ -420,9 +444,14 @@
                     // 使用原生剪贴板 API
                     navigator.clipboard.readText().then(text => {
                         inputHtml.value = text;
-                        // 切换到输入标签页以显示粘贴的内容
-                        switchTab('input');
-                        showToast('已从剪贴板粘贴内容');
+                        // 检查是否为HTML代码，如果是则自动格式化
+                        if (isHtmlContent(text)) {
+                            switchTab('output');
+                            showToast('检测到HTML代码，已自动格式化');
+                        } else {
+                            switchTab('input');
+                            showToast('已从剪贴板粘贴内容');
+                        }
                     }).catch(err => {
                         showToast('读取剪贴板失败: ' + err);
                     });
@@ -592,18 +621,155 @@
                 return escaped;
             }
 
+            // 检测是否为HTML内容
+            function isHtmlContent(text) {
+                if (!text || text.trim() === '') {
+                    return false;
+                }
+                
+                // 检查是否包含HTML标签
+                const htmlTagPattern = /<[a-zA-Z][^>]*>/;
+                if (htmlTagPattern.test(text)) {
+                    return true;
+                }
+                
+                // 检查是否包含HTML实体
+                const htmlEntityPattern = /&[a-zA-Z]+;/;
+                if (htmlEntityPattern.test(text)) {
+                    return true;
+                }
+                
+                // 检查是否包含DOCTYPE声明
+                if (text.trim().toLowerCase().startsWith('<!doctype')) {
+                    return true;
+                }
+                
+                return false;
+            }
+
+            // 监听输入框粘贴事件
+            inputHtml.addEventListener('paste', (e) => {
+                // 延迟执行，确保粘贴内容已经填充到输入框
+                setTimeout(() => {
+                    const content = inputHtml.value;
+                    console.log('粘贴内容检测:', {
+                        length: content.length,
+                        preview: content.substring(0, 100),
+                        isHTML: isHtmlContent(content)
+                    });
+                    
+                    if (isHtmlContent(content)) {
+                        console.log('检测到HTML内容，自动格式化');
+                        switchTab('output');
+                        showToast('检测到HTML代码，已自动格式化', 'success');
+                    } else {
+                        console.log('未检测到HTML内容，保持在输入页面');
+                    }
+                }, 100);
+            });
+
+            // 监听输入框内容变化
+            inputHtml.addEventListener('input', (e) => {
+                const content = inputHtml.value;
+                // 如果内容很长且包含HTML，提示用户可以格式化
+                if (content.length > 100 && isHtmlContent(content)) {
+                    // 添加一个格式化提示
+                    if (!document.querySelector('.format-hint')) {
+                        const hint = document.createElement('div');
+                        hint.className = 'format-hint';
+                        hint.style.cssText = `
+                            position: absolute;
+                            top: 10px;
+                            right: 10px;
+                            background: #007bff;
+                            color: white;
+                            padding: 5px 10px;
+                            border-radius: 4px;
+                            font-size: 12px;
+                            cursor: pointer;
+                            z-index: 1000;
+                        `;
+                        hint.textContent = '点击格式化 →';
+                        hint.onclick = () => {
+                            switchTab('output');
+                            hint.remove();
+                        };
+                        document.querySelector('#inputTab').style.position = 'relative';
+                        document.querySelector('#inputTab').appendChild(hint);
+                        
+                        // 3秒后自动消失
+                        setTimeout(() => {
+                            if (hint.parentNode) {
+                                hint.remove();
+                            }
+                        }, 3000);
+                    }
+                }
+            });
+
             // 如果是从剪贴板进入，自动填充内容
             if (isUTools && window.utools.getFeatures()[0]?.code === 'html-formatter') {
                 // 延迟执行，确保 DOM 已加载
                 setTimeout(() => {
                     const clipboardText = window.utools.readText();
                     if (clipboardText && clipboardText.trim()) {
+                        console.log('自动填充剪贴板内容:', {
+                            length: clipboardText.length,
+                            preview: clipboardText.substring(0, 100),
+                            isHTML: isHtmlContent(clipboardText)
+                        });
+                        
                         inputHtml.value = clipboardText;
-                        // 自动切换到输出标签页进行格式化
-                        switchTab('output');
+                        
+                        // 检查是否为HTML内容
+                        if (isHtmlContent(clipboardText)) {
+                            // 自动切换到输出标签页进行格式化
+                            switchTab('output');
+                            showToast('检测到HTML代码，已自动格式化', 'success');
+                        } else {
+                            // 保持在输入页面
+                            switchTab('input');
+                            showToast('已填充剪贴板内容', 'info');
+                        }
                     }
                 }, 100);
             }
+            
+            // 添加一个测试HTML检测的函数（调试用）
+            window.testHtmlDetection = function(text) {
+                console.log('HTML检测测试:', {
+                    input: text.substring(0, 100) + '...',
+                    result: isHtmlContent(text),
+                    hasTag: /<[a-zA-Z][^>]*>/.test(text),
+                    hasEntity: /&[a-zA-Z]+;/.test(text),
+                    isDoctype: text.trim().toLowerCase().startsWith('<!doctype')
+                });
+                return isHtmlContent(text);
+            };
+
+            // 调试函数：检查当前保存的格式化HTML
+            window.checkFormattedHtml = function() {
+                console.log('当前格式化HTML状态:', {
+                    hasFormatted: !!lastFormattedHtml,
+                    length: lastFormattedHtml.length,
+                    lines: lastFormattedHtml.split('\n').length,
+                    preview: lastFormattedHtml.substring(0, 200),
+                    formatted: lastFormattedHtml
+                });
+                return lastFormattedHtml;
+            };
+
+            // 调试函数：强制重新格式化
+            window.forceFormat = function() {
+                const rawHtml = inputHtml.value;
+                if (rawHtml.trim()) {
+                    console.log('强制重新格式化...');
+                    autoFormatWhenSwitchToOutput();
+                    console.log('格式化完成，调用 checkFormattedHtml() 查看结果');
+                } else {
+                    console.log('输入框为空，无法格式化');
+                }
+            };
         });
     </script>
 </body>
